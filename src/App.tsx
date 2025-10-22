@@ -2,17 +2,29 @@ import React, { useState } from 'react';
 import AppShell from './components/AppShell';
 import StoreDemo from './components/StoreDemo';
 import DatabaseDemo from './components/DatabaseDemo';
+import EditorDemo from './components/EditorDemo';
 
-type Tab = 'store' | 'database';
+type Tab = 'store' | 'database' | 'editor';
 
 const App: React.FC = () => {
-  const [activeTab, setActiveTab] = useState<Tab>('database');
+  const [activeTab, setActiveTab] = useState<Tab>('editor');
 
   return (
     <AppShell>
       {/* Tab Navigation */}
       <div className="mb-6 border-b border-gray-200">
         <nav className="flex gap-4">
+          <button
+            type="button"
+            onClick={() => setActiveTab('editor')}
+            className={`px-4 py-2 font-medium transition-colors border-b-2 ${
+              activeTab === 'editor'
+                ? 'border-blue-600 text-blue-600'
+                : 'border-transparent text-gray-600 hover:text-gray-800 hover:border-gray-300'
+            }`}
+          >
+            Zen Editor
+          </button>
           <button
             type="button"
             onClick={() => setActiveTab('database')}
@@ -39,6 +51,7 @@ const App: React.FC = () => {
       </div>
 
       {/* Tab Content */}
+      {activeTab === 'editor' && <EditorDemo />}
       {activeTab === 'database' && <DatabaseDemo />}
       {activeTab === 'store' && <StoreDemo />}
     </AppShell>

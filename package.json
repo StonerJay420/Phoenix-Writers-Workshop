@@ -16,6 +16,11 @@
     "build-storybook": "storybook build"
   },
   "dependencies": {
+    "@tiptap/extension-placeholder": "^3.7.2",
+    "@tiptap/extension-typography": "^3.7.2",
+    "@tiptap/pm": "^3.7.2",
+    "@tiptap/react": "^3.7.2",
+    "@tiptap/starter-kit": "^3.7.2",
     "dexie": "~3.2.7",
     "dexie-react-hooks": "1.1.7",
     "jszip": "^3.10.1",
