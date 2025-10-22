@@ -1,12 +1,21 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db, dbUtils, seedDatabase, resetAndReseed, isDatabaseSeeded, getCurrentVersion } from '../core/db';
 import { Button } from '../ui/components/Button';
+import {
+  exportWorkshopBundle,
+  importWorkshopBundle,
+  downloadBlob,
+  createDemoBundle,
+} from '../modules/portable';
 
 export const DatabaseDemo: React.FC = () => {
   const [isSeeded, setIsSeeded] = useState<boolean>(false);
   const [dbVersion, setDbVersion] = useState<number>(0);
   const [stats, setStats] = useState<Record<string, number>>({});
+  const [isExporting, setIsExporting] = useState<boolean>(false);
+  const [isImporting, setIsImporting] = useState<boolean>(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Live queries for real-time updates
   const documents = useLiveQuery(() => db.documents.toArray(), []);
@@ -56,6 +65,104 @@ export const DatabaseDemo: React.FC = () => {
     }
   };
 
+  const handleExport = async () => {
+    setIsExporting(true);
+    try {
+      const result = await exportWorkshopBundle({
+        name: 'My Workshop Project',
+        description: 'Exported from Phoenix Workshop',
+        includeApiKeys: false,
+        includeSnapshots: true,
+      });
+
+      if (result.success && result.blob && result.filename) {
+        downloadBlob(result.blob, result.filename);
+      } else {
+        alert(result.message);
+      }
+    } catch (error) {
+      alert(`Export failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
+  const handleImportClick = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleImportFile = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    setIsImporting(true);
+    try {
+      const result = await importWorkshopBundle(file, {
+        clearExisting: false,
+        skipApiKeys: true,
+      });
+
+      if (result.success) {
+        alert(`${result.message}\n\nImported:\n${JSON.stringify(result.counts, null, 2)}`);
+        const seeded = await isDatabaseSeeded();
+        setIsSeeded(seeded);
+        const dbStats = await dbUtils.getStats();
+        setStats(dbStats);
+      } else {
+        alert(result.message);
+      }
+    } catch (error) {
+      alert(`Import failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    } finally {
+      setIsImporting(false);
+      // Reset file input
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+    }
+  };
+
+  const handleLoadDemo = async () => {
+    if (
+      window.confirm(
+        'This will load the demo project into your database. Continue?'
+      )
+    ) {
+      setIsExporting(true);
+      try {
+        const result = await createDemoBundle();
+        if (result.success && result.blob) {
+          // Convert blob to file
+          const file = new File([result.blob], 'demo.workshop', {
+            type: 'application/zip',
+          });
+
+          // Import the demo bundle
+          setIsImporting(true);
+          const importResult = await importWorkshopBundle(file, {
+            clearExisting: false,
+            skipApiKeys: true,
+          });
+
+          if (importResult.success) {
+            alert(`Demo project loaded successfully!\n\nImported:\n${JSON.stringify(importResult.counts, null, 2)}`);
+            const seeded = await isDatabaseSeeded();
+            setIsSeeded(seeded);
+            const dbStats = await dbUtils.getStats();
+            setStats(dbStats);
+          } else {
+            alert(importResult.message);
+          }
+        }
+      } catch (error) {
+        alert(`Failed to load demo: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      } finally {
+        setIsExporting(false);
+        setIsImporting(false);
+      }
+    }
+  };
+
   return (
     <div className="max-w-6xl mx-auto">
       <div className="bg-white rounded-lg shadow-md p-8">
@@ -77,16 +184,55 @@ export const DatabaseDemo: React.FC = () => {
         </div>
 
         {/* Actions */}
-        <div className="mb-6 flex gap-2 flex-wrap">
-          <Button onClick={handleSeed} disabled={isSeeded} variant="primary">
-            Seed Database
-          </Button>
-          <Button onClick={handleReset} variant="secondary">
-            Reset & Reseed
-          </Button>
-          <Button onClick={handleClearAll} variant="danger">
-            Clear All Data
-          </Button>
+        <div className="mb-6">
+          <h3 className="text-lg font-semibold text-gray-700 mb-3">Database Actions</h3>
+          <div className="flex gap-2 flex-wrap">
+            <Button onClick={handleSeed} disabled={isSeeded} variant="primary">
+              Seed Database
+            </Button>
+            <Button onClick={handleReset} variant="secondary">
+              Reset & Reseed
+            </Button>
+            <Button onClick={handleClearAll} variant="danger">
+              Clear All Data
+            </Button>
+          </div>
+        </div>
+
+        {/* Import/Export Actions */}
+        <div className="mb-6">
+          <h3 className="text-lg font-semibold text-gray-700 mb-3">Import/Export</h3>
+          <div className="flex gap-2 flex-wrap">
+            <Button
+              onClick={handleLoadDemo}
+              variant="primary"
+              isLoading={isExporting || isImporting}
+            >
+              Load Demo Project
+            </Button>
+            <Button
+              onClick={handleExport}
+              variant="outline"
+              isLoading={isExporting}
+              disabled={stats.documents === 0}
+            >
+              Export .workshop Bundle
+            </Button>
+            <Button
+              onClick={handleImportClick}
+              variant="outline"
+              isLoading={isImporting}
+            >
+              Import .workshop Bundle
+            </Button>
+          </div>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept=".workshop"
+            onChange={handleImportFile}
+            className="hidden"
+          />
         </div>
 
         {/* Statistics */}
@@ -222,6 +368,7 @@ export const DatabaseDemo: React.FC = () => {
             <li>Sample data automatically seeded on first load</li>
             <li>All data persisted locally in your browser</li>
             <li>Live queries update UI in real-time</li>
+            <li>Export/Import .workshop bundles for portability (ZIP format with JSON)</li>
           </ul>
         </div>
       </div>
