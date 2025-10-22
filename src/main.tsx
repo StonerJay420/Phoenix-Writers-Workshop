@@ -2,6 +2,12 @@ import React from 'react';
 import ReactDOM from 'react-dom/client';
 import App from './App';
 import './index.css';
+import { initializeDatabase } from './core/db';
+
+// Initialize database on app startup
+initializeDatabase().catch((error) => {
+  console.error('Failed to initialize database:', error);
+});
 
 // Register service worker for PWA
 if ('serviceWorker' in navigator) {
