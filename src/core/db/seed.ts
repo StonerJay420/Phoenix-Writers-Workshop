@@ -8,7 +8,9 @@ import type { Document, Scene, Entity, Setting, APIKey, Chunk } from './types';
 const SEED_FLAG_KEY = 'database_seeded';
 
 /**
- * Check if database has been seeded
+ * Determines whether the database has been seeded.
+ *
+ * @returns `true` if the database has been seeded, `false` otherwise.
  */
 export async function isDatabaseSeeded(): Promise<boolean> {
   const setting = await db.settings.where('key').equals(SEED_FLAG_KEY).first();
@@ -16,7 +18,9 @@ export async function isDatabaseSeeded(): Promise<boolean> {
 }
 
 /**
- * Mark database as seeded
+ * Persist a settings record that marks the database as seeded.
+ *
+ * Stores a setting with key `SEED_FLAG_KEY` and value `true`.
  */
 async function markAsSeeded(): Promise<void> {
   await db.settings.add({
@@ -174,7 +178,11 @@ const sampleSettings: Omit<Setting, 'id'>[] = [
 ];
 
 /**
- * Seed the database with sample data
+ * Populate the database with predefined sample documents, scenes, entities, and settings, then mark the database as seeded.
+ *
+ * If the database has already been seeded the function returns without modifying data.
+ *
+ * @returns An object with `success` set to `true` on successful seeding and `message` describing the outcome. When `success` is `true`, `counts` contains the number of records inserted per category (`documents`, `scenes`, `entities`, `settings`). When seeding fails or the database was already seeded, `success` is `false` and `message` explains the reason.
  */
 export async function seedDatabase(): Promise<{
   success: boolean;
@@ -250,7 +258,9 @@ export async function seedDatabase(): Promise<{
 }
 
 /**
- * Reset and reseed the database
+ * Clears all application data tables and then runs the seeding procedure to repopulate sample data.
+ *
+ * @returns An object with `success` indicating whether the operation succeeded and `message` describing the result; on success the returned message (and optional counts) reflect the seeded data, on failure `message` contains the error reason.
  */
 export async function resetAndReseed(): Promise<{
   success: boolean;
@@ -280,7 +290,9 @@ export async function resetAndReseed(): Promise<{
 }
 
 /**
- * Initialize database on app startup
+ * Ensure the application's database is seeded at startup.
+ *
+ * Calls the seeding routine when no seeded flag is present so sample data and settings are created.
  */
 export async function initializeDatabase(): Promise<void> {
   const seeded = await isDatabaseSeeded();
