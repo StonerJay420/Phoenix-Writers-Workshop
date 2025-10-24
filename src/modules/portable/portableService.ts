@@ -18,7 +18,13 @@ const BUNDLE_VERSION = '1.0.0';
 const BUNDLE_FORMAT = 'workshop-bundle';
 
 /**
- * Export current database to a .workshop ZIP file
+ * Create a portable .workshop bundle representing the current database state.
+ *
+ * The bundle includes manifest metadata and selected data tables (documents, scenes, entities, settings, chunks)
+ * and can optionally include snapshots and API keys based on `options`.
+ *
+ * @param options - Export options including `name`, `description`, `author`, `metadata`, `includeSnapshots`, and `includeApiKeys`
+ * @returns An ExportResult object: on success `success: true` with `blob` (the ZIP file), `filename`, and `message`; on failure `success: false` with an error `message`
  */
 export async function exportWorkshopBundle(
   options: ExportOptions
@@ -124,7 +130,19 @@ Generated with Phoenix Workshop
 }
 
 /**
- * Import a .workshop ZIP file into the database
+ * Imports a .workshop bundle into the application's database.
+ *
+ * Validates the bundle manifest, extracts contained data sets (documents, scenes, entities,
+ * snapshots, settings, API keys, chunks), and inserts them into the database. Document IDs from
+ * the bundle are remapped to newly created database IDs and references (e.g., scene.documentId,
+ * snapshot.documentId, chunk.documentId) are updated accordingly. Optionally clears existing
+ * data before import and can skip importing API keys.
+ *
+ * @param file - The .workshop ZIP file to import
+ * @param options.clearExisting - If true, clears all existing database data before importing
+ * @param options.skipApiKeys - If true, omits importing API keys from the bundle
+ * @returns An ImportResult describing success or failure. On success `counts` reports how many
+ * items were imported per data type; on failure `message` contains the error details.
  */
 export async function importWorkshopBundle(
   file: File,
@@ -282,7 +300,10 @@ export async function importWorkshopBundle(
 }
 
 /**
- * Download a blob as a file
+ * Triggers a browser download of the provided Blob using the specified filename.
+ *
+ * @param blob - The data to download as a file
+ * @param filename - The filename to assign to the downloaded file
  */
 export function downloadBlob(blob: Blob, filename: string): void {
   const url = URL.createObjectURL(blob);
@@ -296,7 +317,9 @@ export function downloadBlob(blob: Blob, filename: string): void {
 }
 
 /**
- * Create a demo project bundle
+ * Creates and exports a prefilled demo workshop bundle named "Phoenix Workshop Demo".
+ *
+ * @returns The export result: on success includes `blob` and `filename` along with `success` and `message`; on failure includes `success: false` and an error `message`.
  */
 export async function createDemoBundle(): Promise<ExportResult> {
   return exportWorkshopBundle({
@@ -312,7 +335,12 @@ export async function createDemoBundle(): Promise<ExportResult> {
   });
 }
 
-// Helper functions
+/**
+ * Produces a filesystem-safe filename by replacing non-alphanumeric characters with dashes, collapsing consecutive dashes, and lowercasing.
+ *
+ * @param filename - The input filename to sanitize
+ * @returns The sanitized filename containing only lowercase alphanumeric characters and single dashes
+ */
 
 function sanitizeFilename(filename: string): string {
   return filename
@@ -321,6 +349,13 @@ function sanitizeFilename(filename: string): string {
     .toLowerCase();
 }
 
+/**
+ * Read and parse a JSON array from a file inside a JSZip archive.
+ *
+ * @param zip - The JSZip archive to read from
+ * @param path - Path to the JSON file inside the archive
+ * @returns The parsed array of `T` from the file, or an empty array if the file is missing or cannot be read/parsed
+ */
 async function readJsonFile<T>(zip: JSZip, path: string): Promise<T[]> {
   try {
     const file = zip.file(path);

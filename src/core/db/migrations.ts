@@ -220,14 +220,18 @@ export const migrations = {
 };
 
 /**
- * Get current database version
+ * Retrieve the current database schema version.
+ *
+ * @returns The numeric schema version (the database's `verno`).
  */
 export async function getCurrentVersion(): Promise<number> {
   return db.verno;
 }
 
 /**
- * Check if database needs migration
+ * Determine whether the database schema is behind the latest defined migration.
+ *
+ * @returns `true` if the current database version is less than the highest migration version, `false` otherwise.
  */
 export async function needsMigration(): Promise<boolean> {
   const currentVersion = await getCurrentVersion();
